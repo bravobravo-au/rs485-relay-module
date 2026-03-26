@@ -1,0 +1,67 @@
+MQTT commands supported
+
+
+
+mosquitto_pub -t 'RS485-002/CMD/1/31' -m '{"Output":"on"}'
+mosquitto_pub -t 'RS485-002/CMD/1/31' -m '{"Output":"off"}'
+mosquitto_pub -t 'RS485-002/CMD/1/31' -m '{"Output":"toggle"}'
+
+#Turn on input 1 for 10 seconds
+mosquitto_pub -t 'RS485-002/CMD/1/31' -m '{"Output":"on", "DelayActionTime":"{\"seconds\":10}", "DelayAction": "off"}'
+
+#Turn on input 1 for 1 minute
+mosquitto_pub -t 'RS485-002/CMD/1/31' -m '{"Output":"on", "DelayActionTime":"{\"minutes\":1}", "DelayAction": "off"}'
+
+#Turn on input 1 for 1 hour
+mosquitto_pub -t 'RS485-002/CMD/1/31' -m '{"Output":"on", "DelayActionTime":"{\"hours\":1}", "DelayAction": "off"}'
+
+
+
+#view full status of module
+mosquitto_pub -t 'RS485-002/CMD/STATUS' -m ''
+
+#view status for only one module
+mosquitto_pub -t 'RS485-002/CMD/STATUS' -m '{"modulesModbusAddress":1}'
+
+#View status for inputs 30 and 31 for module 1
+mosquitto_pub -t 'RS485-002/CMD/STATUS' -m '{"modulesModbusAddress":1,"inputAddresses":[30,31]}'
+
+#View status for inputs and outputs 30 and 31 for module 1
+mosquitto_pub -t 'RS485-002/CMD/STATUS' -m '{"modulesModbusAddress":1,"inputAddresses":[30,31],"outputAddresses":[30,31]}'
+
+
+
+
+Sample MQTT events that are published to MQTT
+
+Startup message
+RS485-002/STATUS/boottime 2026-03-26 00:42:59
+
+
+Virtual buttons (support for detection of single push, double push etc as well as when the button is held down)
+RS485-002/STATUS/V1/SINGLE {"modbusaddress": 1, "input": 0, "state": "on", "utctimestamp": 1774485535.233575, "updatedat":"2026-03-26-00:38:55.233575"}
+RS485-002/STATUS/V1/DOUBLE {"modbusaddress": 1, "input": 0, "state": "off", "utctimestamp": 1774485536.752982, "updatedat":"2026-03-26-00:38:56.752982"}
+RS485-002/STATUS/V1/TRIPLE {"modbusaddress": 1, "input": 0, "state": "on", "utctimestamp": 1774485538.909623, "updatedat":"2026-03-26-00:38:58.909623"}
+RS485-002/STATUS/V1/QUAD {"modbusaddress": 1, "input": 0, "state": "off", "utctimestamp": 1774485540.857453, "updatedat":"2026-03-26-00:39:00.857453"}
+RS485-002/STATUS/V1/QUIN {"modbusaddress": 1, "input": 0, "state": "on", "utctimestamp": 1774485543.114404, "updatedat":"2026-03-26-00:39:03.114404"}
+RS485-002/STATUS/V1/HOLD {"ModbusAddress": 1, "Input": 0, "State": "off", "UTCtimestamp": 1774485683.587164, "updatedat":"2026-03-26-00:41:23.587164", "holdTime":2.557306}
+RS485-002/STATUS/V1/HOLD {"ModbusAddress": 1, "Input": 0, "State": "off", "UTCtimestamp": 1774485733.398953, "updatedat":"2026-03-26-00:42:13.398953", "holdTime":10.696361}
+
+Raw input changes
+RS485-002/STATUS/1/0 {"ModbusAddress": 1, "Input": 0, "State": "on", "UTCtimestamp": 1774485536.152177, "updatedat":"2026-03-26-00:38:56.152177"}
+RS485-002/STATUS/1/0 {"ModbusAddress": 1, "Input": 0, "State": "off", "UTCtimestamp": 1774485536.228402, "updatedat":"2026-03-26-00:38:56.228402"}
+RS485-002/STATUS/1/0 {"ModbusAddress": 1, "Input": 0, "State": "on", "UTCtimestamp": 1774485536.348962, "updatedat":"2026-03-26-00:38:56.348962"}
+RS485-002/STATUS/1/0 {"ModbusAddress": 1, "Input": 0, "State": "off", "UTCtimestamp": 1774485536.425082, "updatedat":"2026-03-26-00:38:56.425082"}
+
+
+
+Full status for a 32 in and 32 ourput module
+RS485-002/STATUS/DEVICE_STATUS {"Modules": [{"modbusAddress":1,"inputs":[{"number": "0", "value": "False", "lastChanged": "2026-03-26T00:43:00.255215Z+0000"},{"number": "1", "value": "False", "lastChanged": "2026-03-26T00:43:00.255356Z+0000"},{"number": "2", "value": "False", "lastChanged": "2026-03-26T00:43:00.255390Z+0000"},{"number": "3", "value": "False", "lastChanged": "2026-03-26T00:43:00.255410Z+0000"},{"number": "4", "value": "False", "lastChanged": "2026-03-26T00:43:00.255448Z+0000"},{"number": "5", "value": "False", "lastChanged": "2026-03-26T00:43:00.255470Z+0000"},{"number": "6", "value": "False", "lastChanged": "2026-03-26T00:43:00.255485Z+0000"},{"number": "7", "value": "False", "lastChanged": "2026-03-26T00:43:00.255498Z+0000"},{"number": "8", "value": "False", "lastChanged": "2026-03-26T00:43:00.255512Z+0000"},{"number": "9", "value": "False", "lastChanged": "2026-03-26T00:43:00.255525Z+0000"},{"number": "10", "value": "False", "lastChanged": "2026-03-26T00:43:00.255539Z+0000"},{"number": "11", "value": "False", "lastChanged": "2026-03-26T00:43:00.255553Z+0000"},{"number": "12", "value": "False", "lastChanged": "2026-03-26T00:43:00.255566Z+0000"},{"number": "13", "value": "False", "lastChanged": "2026-03-26T00:43:00.255579Z+0000"},{"number": "14", "value": "False", "lastChanged": "2026-03-26T00:43:00.255591Z+0000"},{"number": "15", "value": "False", "lastChanged": "2026-03-26T00:43:00.255604Z+0000"},{"number": "16", "value": "False", "lastChanged": "2026-03-26T00:43:00.255615Z+0000"},{"number": "17", "value": "False", "lastChanged": "2026-03-26T00:43:00.255628Z+0000"},{"number": "18", "value": "False", "lastChanged": "2026-03-26T00:43:00.255640Z+0000"},{"number": "19", "value": "False", "lastChanged": "2026-03-26T00:43:00.255652Z+0000"},{"number": "20", "value": "False", "lastChanged": "2026-03-26T00:43:00.255663Z+0000"},{"number": "21", "value": "False", "lastChanged": "2026-03-26T00:43:00.255675Z+0000"},{"number": "22", "value": "False", "lastChanged": "2026-03-26T00:43:00.255704Z+0000"},{"number": "23", "value": "False", "lastChanged": "2026-03-26T00:43:00.255725Z+0000"},{"number": "24", "value": "False", "lastChanged": "2026-03-26T00:43:00.255742Z+0000"},{"number": "25", "value": "False", "lastChanged": "2026-03-26T00:43:00.255755Z+0000"},{"number": "26", "value": "False", "lastChanged": "2026-03-26T00:43:00.255767Z+0000"},{"number": "27", "value": "False", "lastChanged": "2026-03-26T00:43:00.255779Z+0000"},{"number": "28", "value": "False", "lastChanged": "2026-03-26T00:43:00.255791Z+0000"},{"number": "29", "value": "False", "lastChanged": "2026-03-26T00:43:00.255803Z+0000"},{"number": "30", "value": "False", "lastChanged": "2026-03-26T00:43:00.255814Z+0000"},{"number": "31", "value": "False", "lastChanged": "2026-03-26T00:43:00.255834Z+0000"}],"outputs":[{"number": "0", "value": "False", "lastChanged": "2026-03-26T00:43:00.255215Z+0000"},{"number": "1", "value": "False", "lastChanged": "2026-03-26T00:43:00.255356Z+0000"},{"number": "2", "value": "False", "lastChanged": "2026-03-26T00:43:00.255390Z+0000"},{"number": "3", "value": "False", "lastChanged": "2026-03-26T00:43:00.255410Z+0000"},{"number": "4", "value": "False", "lastChanged": "2026-03-26T00:43:00.255448Z+0000"},{"number": "5", "value": "False", "lastChanged": "2026-03-26T00:43:00.255470Z+0000"},{"number": "6", "value": "False", "lastChanged": "2026-03-26T00:43:00.255485Z+0000"},{"number": "7", "value": "False", "lastChanged": "2026-03-26T00:43:00.255498Z+0000"},{"number": "8", "value": "False", "lastChanged": "2026-03-26T00:43:00.255512Z+0000"},{"number": "9", "value": "False", "lastChanged": "2026-03-26T00:43:00.255525Z+0000"},{"number": "10", "value": "False", "lastChanged": "2026-03-26T00:43:00.255539Z+0000"},{"number": "11", "value": "False", "lastChanged": "2026-03-26T00:43:00.255553Z+0000"},{"number": "12", "value": "False", "lastChanged": "2026-03-26T00:43:00.255566Z+0000"},{"number": "13", "value": "False", "lastChanged": "2026-03-26T00:43:00.255579Z+0000"},{"number": "14", "value": "False", "lastChanged": "2026-03-26T00:43:00.255591Z+0000"},{"number": "15", "value": "False", "lastChanged": "2026-03-26T00:43:00.255604Z+0000"},{"number": "16", "value": "False", "lastChanged": "2026-03-26T00:43:00.255615Z+0000"},{"number": "17", "value": "False", "lastChanged": "2026-03-26T00:43:00.255628Z+0000"},{"number": "18", "value": "False", "lastChanged": "2026-03-26T00:43:00.255640Z+0000"},{"number": "19", "value": "False", "lastChanged": "2026-03-26T00:43:00.255652Z+0000"},{"number": "20", "value": "False", "lastChanged": "2026-03-26T00:43:00.255663Z+0000"},{"number": "21", "value": "False", "lastChanged": "2026-03-26T00:43:00.255675Z+0000"},{"number": "22", "value": "False", "lastChanged": "2026-03-26T00:43:00.255704Z+0000"},{"number": "23", "value": "False", "lastChanged": "2026-03-26T00:43:00.255725Z+0000"},{"number": "24", "value": "False", "lastChanged": "2026-03-26T00:43:00.255742Z+0000"},{"number": "25", "value": "False", "lastChanged": "2026-03-26T00:43:00.255755Z+0000"},{"number": "26", "value": "False", "lastChanged": "2026-03-26T00:43:00.255767Z+0000"},{"number": "27", "value": "False", "lastChanged": "2026-03-26T00:43:00.255779Z+0000"},{"number": "28", "value": "False", "lastChanged": "2026-03-26T00:43:00.255791Z+0000"},{"number": "29", "value": "False", "lastChanged": "2026-03-26T00:43:00.255803Z+0000"},{"number": "30", "value": "False", "lastChanged": "2026-03-26T00:43:00.255814Z+0000"},{"number": "31", "value": "False", "lastChanged": "2026-03-26T00:43:00.255834Z+0000"}]}] }
+
+Status for inputs 0,1,2 -- response to command mosquitto_pub -t 'RS485-002/CMD/STATUS' -m '{"modulesModbusAddress":1,"inputAddresses":[0,1,2],"outputAddresses":[]}'
+RS485-002/STATUS/DEVICE_STATUS {"Modules": [{"modbusAddress":1,"inputs":[{"number": "0", "value": "False", "lastChanged": "2026-03-26T00:43:00.255215Z+0000"},{"number": "1", "value": "False", "lastChanged": "2026-03-26T00:43:00.255356Z+0000"},{"number": "2", "value": "False", "lastChanged": "2026-03-26T00:43:00.255390Z+0000"}],"outputs":[]}] }
+
+status for outputs 10,30,31 command--- mosquitto_pub -t 'RS485-002/CMD/STATUS' -m '{"modulesModbusAddress":1,"inputAddresses":[],"outputAddresses":[10,30,31]}'
+RS485-002/STATUS/DEVICE_STATUS {"Modules": [{"modbusAddress":1,"inputs":[],"outputs":[{"number": "10", "value": "False", "lastChanged": "2026-03-26T00:43:00.255539Z+0000"},{"number": "30", "value": "False", "lastChanged": "2026-03-26T00:43:00.255814Z+0000"},{"number": "31", "value": "False", "lastChanged": "2026-03-26T00:43:00.255834Z+0000"}]}] }
+
+

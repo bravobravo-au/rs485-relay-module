@@ -1,3 +1,4 @@
-fastcrc==0.3.0
-pyserial==3.5
-paho-mqtt==2.0.0
+fastcrc
+pyserial
+paho-mqtt
+python-dateutil

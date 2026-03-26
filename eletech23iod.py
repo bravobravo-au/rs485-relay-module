@@ -43,13 +43,10 @@ Notes:
         4. each LED blinking 5 times showing multiple LED control
         5. each 4 LEDs turning on in order 5 times showing multiple LED control
 
-Todo:
-    Clean up the test routines from the __main__ maybe make some examples with documentation 
-    Better handle exceptions
-    Handle the baud rate updaing better
 '''
 
 import serial
+from serial import SerialException
 import time
 import datetime
 import sys
@@ -72,121 +69,6 @@ DATETIME_STRING_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ%z'
 class ChecksumMismatchException(Exception):
     """Computed checksum does not match the checksum provided"""
 
-class MultipleModuleManager():
-
-    def __init__(self, port, desiredbaudrate=115200, modbusaddresses=[], inputchangecallback=None, intermoduledelay=20000, ):
-        self.__intermoduledelay__ = intermoduledelay
-        self.__modules__ = {}
-        self.__lastmoduleused__ = None
-        self.__lastmoduleusedat__ = None
-
-
-
-        for modbusaddress in modbusaddresses:
-            self.__modules__[modbusaddress] = ModbusDIO(port=port, desiredbaudrate=desiredbaudrate, modbusaddress=modbusaddress, inputchangecallback=inputchangecallback)
-            self.__lastmoduleused__ = modbusaddress
-            self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-            time.sleep(self.__intermoduledelay__ / 1000000 )
-
-    def __delay__(self, currentmodule):
-        if currentmodule == self.__lastmoduleused__:
-            return None
-        else:
-            timediff = datetime.datetime.utcnow() - self.__lastmoduleusedat__
-            if timediff.days == 0 and timediff.seconds == 0 and timediff.microseconds <= self.__intermoduledelay__:
-                time.sleep(self.__intermoduledelay__ / 1000000)
-        
-
-    def getbaudrate(self,modbusaddress):
-        if modbusaddress not in self.__modules__:
-            return None
-        return self.__modules__[modbusaddress].baudrate
-
-
-    def getnumberinputoutputs(self,modbusaddress):
-        if modbusaddress not in self.__modules__:
-            return None
-        return self.__modules__[modbusaddress].numberinputoutputs
-
-    def pollreadinputs(self,modbusaddress=None):
-        if modbusaddress is None:
-            for module in self.__modules__:
-                self.__delay__(module)
-                self.__modules__[module].pollreadinputs()
-                self.__lastmoduleused__ = module
-                self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-                
-            return None
-        
-        if modbusaddress not in self.__modules__:
-            return None
-        
-        self.__delay__(modbusaddress)
-        self.__modules__[modbusaddress].pollreadinputs()
-        self.__lastmoduleused__ = modbusaddress
-        self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-
-    def updateOutput(self,modbusaddress,output,value):
-        if modbusaddress is None:
-            return None
-        if modbusaddress not in self.__modules__:
-            return None
-
-        self.__delay__(modbusaddress)
-        self.__modules__[modbusaddress].updateOutput(output,value)
-        self.__lastmoduleused__ = modbusaddress
-        self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-
-
-    def updateOutputs(self,value):
-        for modbusaddress in self.__modules__:
-            self.__delay__(modbusaddress)
-            self.__modules__[modbusaddress].updateOutputs(value)
-            self.__lastmoduleused__ = modbusaddress
-            self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-
-    def updateOutputsByList(self,valueList):
-        for modbusaddress in self.__modules__:
-            self.__delay__(modbusaddress)
-            self.__modules__[modbusaddress].updateOutputsByList(valueList)
-            self.__lastmoduleused__ = modbusaddress
-            self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-
-    def getinput(self, modbusaddress, inputnumber):
-        if modbusaddress is None:
-            return None
-        if modbusaddress not in self.__modules__:
-            return None
-
-        self.__delay__(modbusaddress)
-        input = self.__modules__[modbusaddress].getinput(inputnumber)
-        self.__lastmoduleused__ = modbusaddress
-        self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-        return input
-
-    def getinputs(self, modbusaddress, inputnumbers=None):
-        if modbusaddress is None:
-            return None
-        if modbusaddress not in self.__modules__:
-            return None
-
-        self.__delay__(modbusaddress)
-        inputs = self.__modules__[modbusaddress].getinputs(inputnumbers)
-        self.__lastmoduleused__ = modbusaddress
-        self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-        return inputs
-
-    def getoutputs(self, modbusaddress, outputnumbers=None):
-        if modbusaddress is None:
-            return None
-        if modbusaddress not in self.__modules__:
-            return None
-
-        self.__delay__(modbusaddress)
-        outputs = self.__modules__[modbusaddress].getoutputs(outputnumbers)
-        self.__lastmoduleused__ = modbusaddress
-        self.__lastmoduleusedat__ = datetime.datetime.utcnow()
-        return outputs
 
 class ModbusDIO():
     def __init__(self, port, desiredbaudrate=115200, modbusaddress=1, inputchangecallback=None):
@@ -208,7 +90,14 @@ class ModbusDIO():
 
         
         for i in range(0,self.__numberinputoutputs__):
-            initialvalue = { 'number': i, 'lastchange': datetime.datetime.utcnow(), 'lastchangestr': datetime.datetime.utcnow().strftime(DATETIME_STRING_FORMAT), 'value': False, }
+            initialvalue = { 
+                            'number': i, 
+                            'lastchange': datetime.datetime.now(datetime.UTC),
+                            'lastOn': datetime.datetime.now(datetime.UTC),
+                            'lastOff': datetime.datetime.now(datetime.UTC),
+                            'lastchangestr': datetime.datetime.now(datetime.UTC).strftime(DATETIME_STRING_FORMAT), 
+                            'value': False, 
+                            }
             self.__inputs__.append( initialvalue )
             self.__outputs__.append( initialvalue )
 
@@ -224,6 +113,8 @@ class ModbusDIO():
         return data + checksum
 
     def __validateModbusChecksum__(self,data):
+        if data is None:
+            return False
         message = data[:-2]
         checksum = data[-2:]
         calculatedchecksum = crc16.modbus(message).to_bytes(2,'little')
@@ -231,7 +122,7 @@ class ModbusDIO():
         if calculatedchecksum == checksum:
             return True
         
-        raise(ChecksumMismatchException('CHECKSUM DOES NOT MATCH'))
+        raise(ChecksumMismatchException(f'''CHECKSUM DOES NOT MATCH got: {checksum} expected {calculatedchecksum}'''))
         return False
         
 
@@ -295,7 +186,20 @@ class ModbusDIO():
 
 
     def __updateinput__(self,number,newvalue):
-        self.__inputs__[number] = { 'number': number, 'lastchange': datetime.datetime.utcnow(), 'lastchangestr': datetime.datetime.utcnow().strftime(DATETIME_STRING_FORMAT), 'value': newvalue, }
+        fieldName = 'lastOff'
+        oppFieldName = 'lastOn'
+        if newvalue == True:
+            fieldName = 'lastOn'
+            oppFieldName = 'lastOff'
+
+        self.__inputs__[number] = { 
+                                   'number': number, 
+                                   'lastchange': datetime.datetime.now(datetime.UTC), 
+                                   'lastchangestr': datetime.datetime.now(datetime.UTC).strftime(DATETIME_STRING_FORMAT), 
+                                   'value': newvalue, 
+                                   fieldName : datetime.datetime.now(datetime.UTC),
+                                   oppFieldName : self.__inputs__[number][oppFieldName],
+                                   }
 
 
     @property
@@ -321,17 +225,26 @@ class ModbusDIO():
             if value.upper() == 'TOGGLE':
                 value = not self.__outputs__[output]['value']
 
-        self.__outputs__[output] = { 'number': output, 'lastchange': datetime.datetime.utcnow(), 'lastchangestr': datetime.datetime.utcnow().strftime(DATETIME_STRING_FORMAT), 'value': value, }
+        fieldName = 'lastOff'
+        oppFieldName = 'lastOn'
+        if value == True:
+            fieldName = 'lastOn'
+            oppFieldName = 'lastOff'
+
+        self.__outputs__[output] = { 
+                                    'number': output, 
+                                    'lastchange': datetime.datetime.now(datetime.UTC), 
+                                    'lastchangestr': datetime.datetime.now(datetime.UTC).strftime(DATETIME_STRING_FORMAT), 
+                                    'value': value,
+                                    fieldName : datetime.datetime.now(datetime.UTC),
+                                    oppFieldName : self.__outputs__[output][oppFieldName],
+                                    }
 
 
         if value == True:
             value = 0xFF00
         else:
             value = 0x0000
-
-        
-
-
         data = self.__generatemodbusmessage__( 'WRITE_DO', output, value )
         self.__serial__.write(data)
         x = self.__serial__.read(8)
@@ -348,7 +261,20 @@ class ModbusDIO():
 
 
         for i in range(0,self.__numberinputoutputs__):
-            self.__outputs__[i] = { 'number': i, 'lastchange': datetime.datetime.utcnow(), 'lastchangestr': datetime.datetime.utcnow().strftime(DATETIME_STRING_FORMAT), 'value': value, }
+            fieldName = 'lastOff'
+            oppFieldName = 'lastOn'
+            if value == True:
+                fieldName = 'lastOn'
+                oppFieldName = 'lastOff'
+
+            self.__outputs__[i] = { 
+                                   'number': i, 
+                                   'lastchange': datetime.datetime.now(datetime.UTC), 
+                                   'lastchangestr': datetime.datetime.now(datetime.UTC).strftime(DATETIME_STRING_FORMAT), 
+                                   'value': value,
+                                   fieldName : datetime.datetime.now(datetime.UTC),
+                                   oppFieldName : self.__outputs__[i][oppFieldName],
+                                   }
         
         if value == True:
             value = 0xFFFF
@@ -369,7 +295,21 @@ class ModbusDIO():
 
         for i in range(0,self.__numberinputoutputs__):
             if self.__outputs__[i]['value'] != outputlist[i]:
-                self.__outputs__[i] = { 'number': i, 'lastchange': datetime.datetime.utcnow(), 'lastchangestr': datetime.datetime.utcnow().strftime(DATETIME_STRING_FORMAT), 'value': outputlist[i], }
+        
+                fieldName = 'lastOff'
+                oppFieldName = 'lastOn'
+                if outputlist[i] == True:
+                    fieldName = 'lastOn'
+                    oppFieldName = 'lastOff'
+
+                self.__outputs__[i] = { 
+                                        'number': i, 
+                                       'lastchange': datetime.datetime.now(datetime.UTC), 
+                                       'lastchangestr': datetime.datetime.now(datetime.UTC).strftime(DATETIME_STRING_FORMAT), 
+                                       'value': outputlist[i], 
+                                       fieldName : datetime.datetime.now(datetime.UTC),
+                                       oppFieldName : self.__outputs__[i][oppFieldName],
+                                       }
 
         def performupdate(addr, value):
             data = self.__generatemodbusmessage__( 'WRITE_SPECIAL_FUNCTION', addr, value, )
@@ -417,23 +357,23 @@ class ModbusDIO():
 
         
 
-    def getinput(self, inputnumber):
+    def getInput(self, inputnumber):
         if inputnumber <= self.__numberinputoutputs__ and inputnumber >= 0:
             return self.__inputs__[inputnumber]
 
-    def getinputs(self, inputnumbers=None):
+    def getInputs(self, inputnumbers=None):
         if inputnumbers is None:
             return self.__inputs__
         if isinstance(inputnumbers,list):
             ret = []
             for inputnumber in inputnumbers:
-                ret.append(self.getinput(inputnumber))
+                ret.append(self.getInput(inputnumber))
             return ret
         if isinstance(inputnumbers, int):
-            return self.getinput(inputnumbers)
+            return self.getInput(inputnumbers)
 
 
-    def getoutputs(self, outputnumbers=None):
+    def getOutputs(self, outputnumbers=None):
         if outputnumbers is None:
             return self.__outputs__
         if isinstance(outputnumbers,list):
@@ -444,8 +384,11 @@ class ModbusDIO():
         if isinstance(outputnumbers, int):
             return self.__outputs__[outputnumbers]
 
+    def pollreadoutputs(self):
+        pass
+
     def pollreadinputs(self):
-        def getinput(address, value):
+        def getInput(address, value):
             data = self.__generatemodbusmessage__( 'READ_SPECIAL_FUNCTION', address, value )
             self.__serial__.write(data)
             x = self.__serial__.read(7)
@@ -456,9 +399,9 @@ class ModbusDIO():
 
         def updatechangedbits(bits,state):
             '''
-            Try to save some time by only updating the bits that changed. Normally there is only a few inputs change at once so rather than loping through all items we can loop trough bits.
+            We pass in which bits have changed (bits) computed using bitwise manipulation and the changed state (True/False). This allows the function to bail out early if we have updated all changed inputs.
 
-            This function bails out if all of the changed bits have been found.
+            This means that if the last input has changed we have gone through this loop the maximum number of times and saved nothing.
             '''
             subtotal = 0
             for i in range(0,self.__numberinputoutputs__):
@@ -469,17 +412,29 @@ class ModbusDIO():
                     if self.__inputchangecallback__ is not None:
                         self.__inputchangecallback__( self.__modbusaddress__, i, state )
                     if bits == subtotal:
+                        '''
+                        All changes have been found.
+                        '''
                         break
+        try:
+            inputs1 = getInput(0x0090, 0x0001)
+        except SerialException:
+            return None
 
-        inputs1 = getinput(0x0090, 0x0001)
         inputs = inputs1
 
         if self.__model__ in [2324, 2332, 2348]:
-            inputs2 = getinput(0x0091, 0x0001)
+            try:
+                inputs2 = getInput(0x0091, 0x0001)
+            except SerialException:
+                return None
             inputs = inputs2 + inputs1
 
         if self.__model__ in [2348]:
-            inputs3 = getinput(0x0092, 0x0001)
+            try:
+                inputs3 = getInput(0x0092, 0x0001)
+            except SerialException:
+                return None
             inputs = inputs3 + inputs2 + inputs1
 
         inputs = int.from_bytes(inputs,signed=False,byteorder='big')
@@ -495,161 +450,3 @@ class ModbusDIO():
 
             self.__inputvalues__ = inputs
 
-'''
-Example and test code
-'''
-def callback(modbusaddress, input,state):
-    print(f'Callback called for modbusaddress: {modbusaddress} input: {input} with state: {state}')
-
-if __name__ == '__main__': 
-    DELAY = 0.01
-    modbusaddresses=[1,2,3]
-    modules = MultipleModuleManager(port='/dev/ttyUSB0', desiredbaudrate=115200, modbusaddresses=modbusaddresses, inputchangecallback=callback)
-
-    listone=[False,False,False,False,] * int(modules.getnumberinputoutputs(1) / 4)
-    listtwo=[True,False,False,False,] * int(modules.getnumberinputoutputs(1) / 4)
-    listthree=[False,True,False,False,] * int(modules.getnumberinputoutputs(1) / 4)
-    listfour=[False,False,True,False,] * int(modules.getnumberinputoutputs(1) / 4)
-    listfive=[False,False,False,True,] * int(modules.getnumberinputoutputs(1) / 4)
-
-    while True:
-        if True:
-            modules.updateOutputs(False)
-            modules.pollreadinputs()
-
-        if True:
-            for module in modbusaddresses:
-                for i in range(0,modules.getnumberinputoutputs(module)):
-                    modules.updateOutput(module,i,False)
-                    modules.updateOutput(module,i,True)
-                    modules.updateOutput(module,i,False)
-            modules.pollreadinputs()
-            for module in reversed(modbusaddresses):
-                for i in range(modules.getnumberinputoutputs(module)-1,-1,-1):
-                    modules.updateOutput(module,i,False)
-                    modules.updateOutput(module,i,True)
-                    modules.updateOutput(module,i,False)
-            modules.pollreadinputs()
-
-        if True:
-            for module in modbusaddresses:
-                for i in range(0,modules.getnumberinputoutputs(module)):
-                    modules.updateOutput(module,i,True)
-                modules.pollreadinputs()
-                for i in range(modules.getnumberinputoutputs(module)-1,-1,-1):
-                    modules.updateOutput(module,i,False)
-                modules.pollreadinputs()
-
-        if True:
-            for module in modbusaddresses:
-                for i in range(0,modules.getnumberinputoutputs(module)):
-                    modules.updateOutput(module,i,'toggle')
-                modules.pollreadinputs()
-                for i in range(0,modules.getnumberinputoutputs(module)):
-                    modules.updateOutput(module,i,'toggle')
-                modules.pollreadinputs()
-
-        if True:
-            for _ in range(0,5):
-                modules.updateOutputs(True)
-                modules.pollreadinputs()
-                modules.updateOutputs(False)
-                modules.pollreadinputs()
-
-        if True:
-            for _ in range(0,5):
-                modules.updateOutputsByList(listone)
-                modules.updateOutputsByList(listtwo)
-                modules.updateOutputsByList(listthree)
-                modules.updateOutputsByList(listfour)
-                modules.updateOutputsByList(listfive)
-                modules.updateOutputsByList(listfour)
-                modules.updateOutputsByList(listthree)
-                modules.updateOutputsByList(listtwo)
-                modules.updateOutputsByList(listone)
-                modules.pollreadinputs()
-
-        if True:
-            modules.pollreadinputs()
-            mod1input1 = modules.getinput(1,1)
-            mod1inputs = modules.getinputs(1)
-            mod1outputs = modules.getoutputs(1)
-            #print(f'mod1input1:{mod1input1}')
-            #print(f'mod1inputs:{mod1inputs} mod1outputs: {mod1outputs}')
-
-
-if False:
-
-    x1 = ModbusDIO(port='/dev/ttyUSB0', desiredbaudrate=115200, modbusaddress=1, inputchangecallback=callback)
-    x2 = ModbusDIO(port='/dev/ttyUSB0', desiredbaudrate=115200, modbusaddress=2, inputchangecallback=callback)
-    x3 = ModbusDIO(port='/dev/ttyUSB0', desiredbaudrate=115200, modbusaddress=3, inputchangecallback=callback)
-
-    modules = [x1,x2,x3]
-
-    listone=[False,False,False,False,] * int(x1.numberinputoutputs / 4)
-    listtwo=[True,False,False,False,] * int(x1.numberinputoutputs / 4)
-    listthree=[False,True,False,False,] * int(x1.numberinputoutputs / 4)
-    listfour=[False,False,True,False,] * int(x1.numberinputoutputs / 4)
-    listfive=[False,False,False,True,] * int(x1.numberinputoutputs / 4)
-
-
-
-    count = 0
-    while True:
-        x1.pollreadinputs()
-        time.sleep(DELAY)
-        x2.pollreadinputs()
-        time.sleep(DELAY)
-        x3.pollreadinputs()
-        time.sleep(DELAY)
-        '''
-        if count % 10 == 0:
-            print(f'{x1}')
-        '''
-
-
-        if True:
-            for module in modules:
-                for i in range(0,module.numberinputoutputs):
-                    module.updateOutput(i,True)
-                    module.pollreadinputs()
-                for i in range(module.numberinputoutputs-1,-1,-1):
-                    module.updateOutput(i,False)
-                    module.pollreadinputs()
-                time.sleep(DELAY)
-        
-        if True:
-            for module in modules:
-                for i in range(0,module.numberinputoutputs):
-                    module.updateOutput(i,'toggle')
-                    module.pollreadinputs()
-                for i in range(0,module.numberinputoutputs):
-                    module.updateOutput(i,'toggle')
-                    module.pollreadinputs()
-                time.sleep(DELAY)
-
-        if True:
-            for module in modules:
-                for _ in range(0,50):
-                    module.updateOutputs(True)
-                    module.pollreadinputs()
-                    module.updateOutputs(False)
-                    module.pollreadinputs()
-                time.sleep(DELAY)
-
-        if True:
-            for module in modules:
-                for _ in range(0,10):
-                    module.updateOutputsByList(listone)
-                    module.pollreadinputs()
-                    module.updateOutputsByList(listtwo)
-                    module.pollreadinputs()
-                    module.updateOutputsByList(listthree)
-                    module.pollreadinputs()
-                    module.updateOutputsByList(listfour)
-                    module.pollreadinputs()
-                    module.updateOutputsByList(listfive)
-                    module.pollreadinputs()
-                time.sleep(DELAY)
-
-        count += 1
