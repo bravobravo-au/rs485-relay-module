@@ -354,8 +354,70 @@ class ModbusDIO():
             highbits = highbits & 0x0000FFFF
             performupdate(0x0082, highbits)
 
+    def updateOutputsByHexStr(self,hexStr, outputValue=True, keepCurrent=False, ):
+        '''
+        Update all outputs using a list of Bytes
+        '''
+        bitwiseORMask = 0x0000000
+        outputMask = 0x0000000
 
-        
+        if outputValue == True:
+            outputMask = 0xFFFFFFFF
+
+        def performupdate(addr, value):
+            data = self.__generatemodbusmessage__( 'WRITE_SPECIAL_FUNCTION', addr, value, )
+            self.__serial__.write(data)
+            x = self.__serial__.read(8)
+            self.__validateModbusChecksum__(x)
+            self.__serial__.reset_input_buffer()
+
+        try:
+            value = int(hexStr, 16)
+            if value > 4294967295:
+                return None
+        except ValueError:
+            return None
+
+        if keepCurrent == True:
+            for i,output in enumerate(self.__outputs__):
+                currBit = pow(2,i)
+                if output['value'] == True:
+                    bitwiseORMask = bitwiseORMask | currBit
+            bitwiseORMask = ((value & bitwiseORMask) ^ ((1 << 32) -1)) & bitwiseORMask
+      
+        value = (value & outputMask)| bitwiseORMask
+
+        for i,output in enumerate(self.__outputs__):
+            newValue = False
+            if value & pow(2,i) > 0:
+                newValue = True
+
+            if newValue != output['value']:
+                fieldName = 'lastOff'
+                oppFieldName = 'lastOn'
+                if newValue == True:
+                    fieldName = 'lastOn'
+                    oppFieldName = 'lastOff'
+
+                self.__outputs__[i] = { 
+                                            'number': i, 
+                                            'lastchange': datetime.datetime.now(datetime.UTC), 
+                                            'lastchangestr': datetime.datetime.now(datetime.UTC).strftime(DATETIME_STRING_FORMAT), 
+                                            'value': newValue,
+                                            fieldName : datetime.datetime.now(datetime.UTC),
+                                            oppFieldName : self.__outputs__[i][oppFieldName],
+                                            }
+
+        lower16bits = (value & 0x0000FFFF) | (bitwiseORMask & 0x0000FFFF)
+        performupdate(0x0080, lower16bits)
+
+        if self.__model__ in [2324, 2332, 2348]:
+            upper16bits = ((value >> 16) & 0x0000FFFF) | (bitwiseORMask >> 16 & 0x0000FFFF)
+            performupdate(0x0081, upper16bits)
+
+        if self.__model__ in [2348]:
+            upper16bits = ((value >> 32) & 0x0000FFFF) | (bitwiseORMask >> 32 & 0x0000FFFF)
+            performupdate(0x0081, upper16bits)
 
     def getInput(self, inputnumber):
         if inputnumber <= self.__numberinputoutputs__ and inputnumber >= 0:

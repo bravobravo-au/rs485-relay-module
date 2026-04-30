@@ -27,11 +27,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 rs485-relay-module for MODBUS relays from eletechsup 
 Documentation from https://485io.com/eletechsup/23IOA08_23IOB16_23IOC24_23IOD32_23IOE48.rar
 
-Flash all outsputs at the same time 1 second on and 1 second off
+Example code that shows how batch updates can be performed on outputs. This is faster than calling an output command many times.
 '''
 import sys
 import os
-import time
+import time 
 
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
@@ -42,15 +42,15 @@ from multipleModuleManager import MultipleModuleManager
 Example and test code
 '''
 if __name__ == '__main__': 
-    DELAY = 0.01
     modbusaddresses=[1,]
     modules = MultipleModuleManager(port='/dev/ttyUSB0', desiredbaudrate=115200, modbusaddresses=modbusaddresses,)
 
+    numberIOs = modules.getNumberInputOutputs(modbusaddresses[0])
+
     while True:
-        if True:
-            for _ in range(0,5):
-                modules.updateOutputs(modbusaddresses[0],True)
-                time.sleep(DELAY*100)
-                modules.updateOutputs(modbusaddresses[0],False)
-                time.sleep(DELAY*100)
+        value = 0x1
+        for io in range(0,numberIOs):
+            modules.updateOutputs(modbusaddresses[0],value)
+            value = value >> 1
+            time.sleep(0.05)
 

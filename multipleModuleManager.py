@@ -62,18 +62,18 @@ class MultipleModuleManager():
     def getModbusAddresses( self, ):
         return list(self.__modules__.keys())
 
-    def getbaudrate(self,modbusaddress):
+    def getBaudRate(self,modbusaddress):
         if modbusaddress not in self.__modules__:
             return None
         return self.__modules__[modbusaddress].baudrate
 
 
-    def getnumberinputoutputs(self,modbusaddress):
+    def getNumberInputOutputs(self,modbusaddress):
         if modbusaddress not in self.__modules__:
             return None
         return self.__modules__[modbusaddress].numberinputoutputs
 
-    def pollreadinputs(self,modbusaddress=None):
+    def pollReadInputs(self,modbusaddress=None):
         if modbusaddress is None:
             for module in self.__modules__:
                 self.__delay__(module)
@@ -115,19 +115,50 @@ class MultipleModuleManager():
         self.__lastmoduleusedat__ = datetime.datetime.now(datetime.UTC)
 
 
-    def updateOutputs(self,value):
+    def updateOutputs(self, modbusaddress, value):
+        if modbusaddress not in self.__modules__:
+            return None
+
+        if modbusaddress is None:
+            modbusaddress = self.__modules__
+        else:
+            modbusaddress = [ modbusaddress ]
+
         for modbusaddress in self.__modules__:
             self.__delay__(modbusaddress)
             self.__modules__[modbusaddress].updateOutputs(value)
             self.__lastmoduleused__ = modbusaddress
             self.__lastmoduleusedat__ = datetime.datetime.now(datetime.UTC)
 
-    def updateOutputsByList(self,valueList):
-        for modbusaddress in self.__modules__:
-            self.__delay__(modbusaddress)
-            self.__modules__[modbusaddress].updateOutputsByList(valueList)
-            self.__lastmoduleused__ = modbusaddress
+
+
+    def updateOutputsByList(self, modbusaddress, valueList):
+        if modbusaddress not in self.__modules__:
+            return None
+
+        if modbusaddress is None:
+            modbusaddress = self.__modules__
+        else:
+            modbusaddress = [ modbusaddress ]
+
+        for address in modbusaddress:
+            self.__delay__(address)
+            self.__modules__[address].updateOutputsByList(valueList)
+            self.__lastmoduleused__ = address
             self.__lastmoduleusedat__ = datetime.datetime.now(datetime.UTC)
+        
+    def updateOutputsByHexStr(self, modbusaddress, hexStr, outputValue=True, keepCurrent=False,):
+        if modbusaddress not in self.__modules__:
+            return None
+
+        if modbusaddress is None:
+            modbusaddress = self.__modules__
+        else:
+            modbusaddress = [ modbusaddress ]
+
+        for address in self.__modules__:
+            self.__delay__(address)
+            self.__modules__[address].updateOutputsByHexStr(hexStr,outputValue=outputValue,keepCurrent=keepCurrent)
 
     def getInput(self, modbusaddress, inputnumber):
         if modbusaddress is None:

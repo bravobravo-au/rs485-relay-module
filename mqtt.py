@@ -120,6 +120,14 @@ def on_mqtt_message(client, userdata, msg):
         client.publish(mqtt_device_status_response_topic, message, qos=mqtt_qos )
         return
 
+    if msg.topic == mqtt_hexiaecimal_control_topic:
+        jsonMessage = json.loads( msg.payload.decode("utf-8") )
+        keepCurrent = False
+        if 'keepCurrent' in jsonMessage:
+            keepCurrent = jsonMessage['keepCurrent']
+        if 'Output' in jsonMessage and 'modbusaddress' in jsonMessage and 'value' in jsonMessage:
+            modules.updateOutputsByHexStr( jsonMessage['modbusaddress'], jsonMessage['Output'],outputValue=jsonMessage['value'],keepCurrent=keepCurrent)
+
     for commandConfig in commandConfigs:
         if msg.topic == commandConfig['MQTT_TOPICS']:
             commandList = commandConfig['COMMAND'].split(" ")
@@ -257,6 +265,10 @@ def on_mqtt_connect(client, userdata, flags, rc, properties):
                         )
         if mqtt_device_status_request_topic is not None and mqtt_device_status_request_topic != '':
             client.subscribe( mqtt_device_status_request_topic )
+
+        if mqtt_hexiaecimal_control_topic is not None and mqtt_hexiaecimal_control_topic != '':
+            client.subscribe( mqtt_hexiaecimal_control_topic )
+
         for cmnd in commandConfigs:
             client.subscribe( cmnd['MQTT_TOPICS'] )
         for gpio in gpioConfigs:
@@ -306,7 +318,7 @@ def sqliteSetup():
     return cur,db
 
 def initialise(modbusaddresses,DELAY):
-    global mqtt_connected, mqtt_startup_message, mqtt_startup_topic, mqtt_qos, mqtt_retain, mqtt_device_status_request_topic, mqtt_device_status_response_topic, commandConfigs, gpioConfigs, virtualInputs
+    global mqtt_connected, mqtt_startup_message, mqtt_startup_topic, mqtt_qos, mqtt_retain, mqtt_device_status_request_topic, mqtt_device_status_response_topic, mqtt_hexiaecimal_control_topic, commandConfigs, gpioConfigs, virtualInputs
     '''
     Configs for running shell commands
     '''
@@ -359,6 +371,7 @@ def initialise(modbusaddresses,DELAY):
     mqtt_startup_topic                  = config['DEFAULT']['MQTT_STARTUP_TOPIC']
     mqtt_device_status_request_topic	= config['DEFAULT']['MQTT_DEVICE_STATUS_REQUEST_TOPIC']
     mqtt_device_status_response_topic	= config['DEFAULT']['MQTT_DEVICE_STATUS_RESPONSE_TOPIC']
+    mqtt_hexiaecimal_control_topic	    = config['DEFAULT']['MQTT_HEXADECIMAL_CONTROL_TOPIC']
     device_name                         = config['DEFAULT']['RS485_DEVICE']
     baud_rate                           = config['DEFAULT']['RS485_BAUD_RATE']
 
@@ -593,5 +606,5 @@ if __name__ == '__main__':
 
         if mqtt_connected == False:
             mqtt_connect()
-        modules.pollreadinputs()
+        modules.pollReadInputs()
         client.loop(DELAY)

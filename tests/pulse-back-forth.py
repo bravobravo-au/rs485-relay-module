@@ -49,12 +49,12 @@ if __name__ == '__main__':
 
         if True:
             for module in modbusaddresses:
-                for i in range(0,modules.getnumberinputoutputs(module)):
+                for i in range(0,modules.getNumberInputOutputs(module)):
                     modules.updateOutput(module,i,False)
                     modules.updateOutput(module,i,True)
                     modules.updateOutput(module,i,False)
             for module in reversed(modbusaddresses):
-                for i in range(modules.getnumberinputoutputs(module)-1,-1,-1):
+                for i in range(modules.getNumberInputOutputs(module)-1,-1,-1):
                     modules.updateOutput(module,i,False)
                     modules.updateOutput(module,i,True)
                     modules.updateOutput(module,i,False)

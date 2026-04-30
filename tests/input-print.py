@@ -47,4 +47,4 @@ if __name__ == '__main__':
     modules = MultipleModuleManager(port='/dev/ttyUSB0', desiredbaudrate=115200, modbusaddresses=modbusaddresses, inputchangecallback=callback)
 
     while True:
-        modules.pollreadinputs()
+        modules.pollReadInputs()

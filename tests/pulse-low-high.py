@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     while True:
         for module in modbusaddresses:
-            for i in range(0,modules.getnumberinputoutputs(module)):
+            for i in range(0,modules.getNumberInputOutputs(module)):
                 modules.updateOutput(module,i,'toggle')
                 modules.updateOutput(module,i,'toggle')
 
